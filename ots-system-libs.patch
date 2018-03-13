@@ -1,0 +1,145 @@
+--- ots-6.1.1/configure.ac.orig	2017-10-16 18:55:24.000000000 +0200
++++ ots-6.1.1/configure.ac	2018-03-13 21:01:59.367447508 +0100
+@@ -16,8 +16,9 @@
+ AC_OBJEXT
+ AC_PROG_CC
+ AC_PROG_CXX
+-AC_PROG_RANLIB
++LT_INIT
+ PKG_PROG_PKG_CONFIG([0.20])
++PKG_CHECK_MODULES(OTS, [libwoff2dec zlib])
+ 
+ AX_CXX_COMPILE_STDCXX([11], [noext], [mandatory])
+ 
+@@ -41,6 +42,7 @@
+ 	AS_HELP_STRING([--enable-graphite=@<:@yes/no@:>@],
+                        [Sanitize Graphite tables @<:@default=yes@:>@]))
+ AS_IF([test "x$enable_graphite" != "xno"], [
++	PKG_CHECK_MODULES(LZ4, [liblz4])
+ 	AC_DEFINE(OTS_GRAPHITE, 1, [Sanitize Graphite tables])
+ ])
+ AM_CONDITIONAL(OTS_GRAPHITE, [test "x$enable_graphite" != "xno"])
+--- ots-6.1.1/Makefile.am.orig	2017-10-16 18:55:24.000000000 +0200
++++ ots-6.1.1/Makefile.am	2018-03-13 21:06:15.540777916 +0100
+@@ -50,17 +50,13 @@
+ TESTS += tests/test_fuzzed_fonts.sh
+ endif
+ 
+-lib_LIBRARIES = \
+-  libots.a \
+-  libbrotli.a \
+-  libwoff2.a \
+-  libz.a \
++lib_LTLIBRARIES = \
++  libotsanitizer.la \
+   $(NULL)
+ 
++libotsanitizer_la_LIBADD = $(OTS_LIBS)
+ if OTS_GRAPHITE
+-lib_LIBRARIES += \
+-  liblz4.a \
+-  $(NULL)
++libotsanitizer_la_LIBADD += $(LZ4_LIBS)
+ endif
+ 
+ check_PROGRAMS = \
+@@ -68,12 +64,8 @@
+   layout_common_table_test \
+   $(NULL)
+ 
+-check_LIBRARIES = \
+-  libgtest.a \
+-  $(NULL)
+-
+ 
+-libots_a_SOURCES = \
++libotsanitizer_la_SOURCES = \
+   src/cff.cc \
+   src/cff.h \
+   src/cff_type2_charstring.cc \
+@@ -137,7 +129,7 @@
+   $(NULL)
+ 
+ if OTS_GRAPHITE
+-libots_a_SOURCES += \
++libotsanitizer_la_SOURCES += \
+   src/feat.cc \
+   src/feat.h \
+   src/glat.cc \
+@@ -154,15 +146,13 @@
+   $(NULL)
+ endif
+ 
+-libots_a_CPPFLAGS = \
++libotsanitizer_la_CPPFLAGS = \
+   -I$(top_srcdir)/include \
+-  -I$(top_srcdir)/third_party/woff2/include \
+-  -I$(top_srcdir)/third_party/zlib \
+   $(NULL)
+ 
+ if OTS_GRAPHITE
+-libots_a_CPPFLAGS += \
+-  -I$(top_srcdir)/third_party/lz4/lib \
++libotsanitizer_la_CPPFLAGS += \
++  $(LZ4_CFLAGS) \
+   $(NULL)
+ endif
+ 
+@@ -368,7 +358,6 @@
+ 
+ cff_type2_charstring_test_CPPFLAGS = \
+   -I$(top_srcdir)/src \
+-  $(GTEST_CPPFLAGS) \
+   $(AM_CPPFLAGS) \
+   $(NULL)
+ 
+@@ -377,20 +366,18 @@
+   $(NULL)
+ 
+ cff_type2_charstring_test_LDADD = \
+-  libgtest.a \
++  -lgtest \
+   $(LDADD) \
+   $(PTHREAD_LIBS) \
+   $(NULL)
+ 
+ 
+ layout_common_table_test_SOURCES = \
+-  third_party/googletest/googletest/src/gtest_main.cc \
+   tests/layout_common_table_test.cc \
+   $(NULL)
+ 
+ layout_common_table_test_CPPFLAGS = \
+   -I$(top_srcdir)/src \
+-  $(GTEST_CPPFLAGS) \
+   $(AM_CPPFLAGS) \
+   $(NULL)
+ 
+@@ -399,7 +386,7 @@
+   $(NULL)
+ 
+ layout_common_table_test_LDADD = \
+-  libgtest.a \
++  -lgtest -lgtest_main \
+   $(LDADD) \
+   $(PTHREAD_LIBS) \
+   $(NULL)
+@@ -468,17 +455,8 @@
+   $(NULL)
+ 
+ LDADD = \
+-  libots.a \
+-  libwoff2.a \
+-  libbrotli.a \
+-  libz.a \
+-  $(NULL)
+-
+-if OTS_GRAPHITE
+-LDADD += \
+-  liblz4.a \
++  libotsanitizer.la \
+   $(NULL)
+-endif
+ 
+ if HAVE_WIN32
+ LDADD += -lgdi32
