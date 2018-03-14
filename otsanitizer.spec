@@ -97,7 +97,7 @@ EOF
 %{__make}
 
 %if %{with tests}
-%{__make} check
+%{__make} check || (cat test-suite.log && false)
 %endif
 
 %install
