@@ -79,6 +79,8 @@ Statyczna biblioteka OpenType Sanitizer.
 cat >>tests/BLACKLIST.txt <<EOF
 # LiTE package; cmap: Bad cmap subtable; Failed to parse table
 whiterabbit.ttf
+# fonts-TTF-Google-Droid; Layout: Bad lookup index 8 for lookup 1; Failed to parse feature table 12; GSUB: Failed to parse feature list table; Failed to parse table
+DroidNaskh-Bold.ttf
 EOF
 
 %build
