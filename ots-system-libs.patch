@@ -1,145 +1,112 @@
---- ots-6.1.1/configure.ac.orig	2017-10-16 18:55:24.000000000 +0200
-+++ ots-6.1.1/configure.ac	2018-03-13 21:01:59.367447508 +0100
-@@ -16,8 +16,9 @@
- AC_OBJEXT
- AC_PROG_CC
- AC_PROG_CXX
--AC_PROG_RANLIB
-+LT_INIT
- PKG_PROG_PKG_CONFIG([0.20])
-+PKG_CHECK_MODULES(OTS, [libwoff2dec zlib])
+--- ots-8.0.0/meson.build.orig	2019-08-30 10:52:55.000000000 +0200
++++ ots-8.0.0/meson.build	2019-10-09 19:45:16.139416093 +0200
+@@ -38,52 +38,13 @@
+                configuration: conf)
  
- AX_CXX_COMPILE_STDCXX([11], [noext], [mandatory])
  
-@@ -41,6 +42,7 @@
- 	AS_HELP_STRING([--enable-graphite=@<:@yes/no@:>@],
-                        [Sanitize Graphite tables @<:@default=yes@:>@]))
- AS_IF([test "x$enable_graphite" != "xno"], [
-+	PKG_CHECK_MODULES(LZ4, [liblz4])
- 	AC_DEFINE(OTS_GRAPHITE, 1, [Sanitize Graphite tables])
- ])
- AM_CONDITIONAL(OTS_GRAPHITE, [test "x$enable_graphite" != "xno"])
---- ots-6.1.1/Makefile.am.orig	2017-10-16 18:55:24.000000000 +0200
-+++ ots-6.1.1/Makefile.am	2018-03-13 21:06:15.540777916 +0100
-@@ -50,17 +50,13 @@
- TESTS += tests/test_fuzzed_fonts.sh
- endif
- 
--lib_LIBRARIES = \
--  libots.a \
--  libbrotli.a \
--  libwoff2.a \
--  libz.a \
-+lib_LTLIBRARIES = \
-+  libotsanitizer.la \
-   $(NULL)
- 
-+libotsanitizer_la_LIBADD = $(OTS_LIBS)
- if OTS_GRAPHITE
--lib_LIBRARIES += \
--  liblz4.a \
--  $(NULL)
-+libotsanitizer_la_LIBADD += $(LZ4_LIBS)
- endif
- 
- check_PROGRAMS = \
-@@ -68,12 +64,8 @@
-   layout_common_table_test \
-   $(NULL)
- 
--check_LIBRARIES = \
--  libgtest.a \
--  $(NULL)
+-brotli_includes = ['third_party/brotli/c/include']
+-libbrotli = library('brotli',
+-  'third_party/brotli/c/common/constants.h',
+-  'third_party/brotli/c/common/dictionary.c',
+-  'third_party/brotli/c/common/dictionary.h',
+-  'third_party/brotli/c/common/transform.c',
+-  'third_party/brotli/c/common/transform.h',
+-  'third_party/brotli/c/common/version.h',
+-  'third_party/brotli/c/dec/bit_reader.c',
+-  'third_party/brotli/c/dec/bit_reader.h',
+-  'third_party/brotli/c/dec/decode.c',
+-  'third_party/brotli/c/dec/huffman.c',
+-  'third_party/brotli/c/dec/huffman.h',
+-  'third_party/brotli/c/dec/prefix.h',
+-  'third_party/brotli/c/dec/state.c',
+-  'third_party/brotli/c/dec/state.h',
+-  'third_party/brotli/c/include/brotli/decode.h',
+-  'third_party/brotli/c/include/brotli/port.h',
+-  'third_party/brotli/c/include/brotli/types.h',
+-  include_directories: include_directories(brotli_includes),
+-)
 -
++libbrotli = dependency('libbrotlidec')
  
--libots_a_SOURCES = \
-+libotsanitizer_la_SOURCES = \
-   src/cff.cc \
-   src/cff.h \
-   src/cff_type2_charstring.cc \
-@@ -137,7 +129,7 @@
-   $(NULL)
+-woff2_includes = ['third_party/brotli/c/include', 'third_party/woff2/include']
+-libwoff2 = library('woff2',
+-  'third_party/woff2/include/woff2/decode.h',
+-  'third_party/woff2/include/woff2/output.h',
+-  'third_party/woff2/src/buffer.h',
+-  'third_party/woff2/src/port.h',
+-  'third_party/woff2/src/round.h',
+-  'third_party/woff2/src/store_bytes.h',
+-  'third_party/woff2/src/table_tags.cc',
+-  'third_party/woff2/src/table_tags.h',
+-  'third_party/woff2/src/variable_length.cc',
+-  'third_party/woff2/src/variable_length.h',
+-  'third_party/woff2/src/woff2_common.cc',
+-  'third_party/woff2/src/woff2_common.h',
+-  'third_party/woff2/src/woff2_dec.cc',
+-  'third_party/woff2/src/woff2_out.cc',
+-  include_directories: include_directories(woff2_includes),
+-)
++libwoff2 = dependency('libwoff2dec')
  
- if OTS_GRAPHITE
--libots_a_SOURCES += \
-+libotsanitizer_la_SOURCES += \
-   src/feat.cc \
-   src/feat.h \
-   src/glat.cc \
-@@ -154,15 +146,13 @@
-   $(NULL)
+ 
+ ots_includes = [
+   'include',
+-  'third_party/woff2/include',
+ ]
+ 
+ ots_sources = [
+@@ -167,10 +128,9 @@
+   'src/vvar.h',
+ ]
+ 
+-ots_libs = [libbrotli, libwoff2]
++deps = [libbrotli, libwoff2]
+ 
+ if get_option('graphite')
+-  ots_includes += ['third_party/lz4/lib']
+   ots_sources += [
+     'src/feat.cc',
+     'src/feat.h',
+@@ -186,23 +146,25 @@
+     'src/sill.h',
+     'src/sill.cc',
+   ]
+-  liblz4 = library('lz4',
+-    'third_party/lz4/lib/lz4.c',
+-    'third_party/lz4/lib/lz4.h',
+-  )
+-  ots_libs += [liblz4]
++  liblz4 = dependency('liblz4')
++  deps += [liblz4]
  endif
  
--libots_a_CPPFLAGS = \
-+libotsanitizer_la_CPPFLAGS = \
-   -I$(top_srcdir)/include \
--  -I$(top_srcdir)/third_party/woff2/include \
--  -I$(top_srcdir)/third_party/zlib \
-   $(NULL)
+ zlib = dependency('zlib', fallback : ['zlib', 'zlib_dep'])
++deps += [zlib]
  
- if OTS_GRAPHITE
--libots_a_CPPFLAGS += \
--  -I$(top_srcdir)/third_party/lz4/lib \
-+libotsanitizer_la_CPPFLAGS += \
-+  $(LZ4_CFLAGS) \
-   $(NULL)
+-libots = library('ots',
++libots = library('otsanitizer',
+   ots_sources,
+   include_directories: include_directories(ots_includes),
+-  link_with: ots_libs,
+   cpp_args : '-DHAVE_CONFIG_H',
+-  dependencies: zlib,
++  dependencies: deps,
++  install: true,
++  version: '0.0.0',
++  soversion: 0
+ )
+ 
++install_headers(['include/opentype-sanitiser.h', 'include/ots-memory-stream.h'], subdir: 'ots')
++
+ 
+ executable('ots-sanitize',
+   'util/ots-sanitize.cc',
+@@ -290,7 +252,7 @@
  endif
  
-@@ -368,7 +358,6 @@
  
- cff_type2_charstring_test_CPPFLAGS = \
-   -I$(top_srcdir)/src \
--  $(GTEST_CPPFLAGS) \
-   $(AM_CPPFLAGS) \
-   $(NULL)
+-gtest = dependency('gtest', fallback: ['gtest', 'gtest_main_dep'])
++gtest = dependency('gtest gtest_main', fallback: ['gtest', 'gtest_main_dep'])
  
-@@ -377,20 +366,18 @@
-   $(NULL)
- 
- cff_type2_charstring_test_LDADD = \
--  libgtest.a \
-+  -lgtest \
-   $(LDADD) \
-   $(PTHREAD_LIBS) \
-   $(NULL)
- 
- 
- layout_common_table_test_SOURCES = \
--  third_party/googletest/googletest/src/gtest_main.cc \
-   tests/layout_common_table_test.cc \
-   $(NULL)
- 
- layout_common_table_test_CPPFLAGS = \
-   -I$(top_srcdir)/src \
--  $(GTEST_CPPFLAGS) \
-   $(AM_CPPFLAGS) \
-   $(NULL)
- 
-@@ -399,7 +386,7 @@
-   $(NULL)
- 
- layout_common_table_test_LDADD = \
--  libgtest.a \
-+  -lgtest -lgtest_main \
-   $(LDADD) \
-   $(PTHREAD_LIBS) \
-   $(NULL)
-@@ -468,17 +455,8 @@
-   $(NULL)
- 
- LDADD = \
--  libots.a \
--  libwoff2.a \
--  libbrotli.a \
--  libz.a \
--  $(NULL)
--
--if OTS_GRAPHITE
--LDADD += \
--  liblz4.a \
-+  libotsanitizer.la \
-   $(NULL)
--endif
- 
- if HAVE_WIN32
- LDADD += -lgdi32
+ cff_charstring = executable('cff_charstring',
+   'tests/cff_charstring_test.cc',

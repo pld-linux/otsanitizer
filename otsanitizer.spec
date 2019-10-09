@@ -8,23 +8,25 @@
 Summary:	OpenType Sanitizer
 Summary(pl.UTF-8):	OpenType Sanitizer - narzędzie poprawiające fonty OpenType
 Name:		otsanitizer
-Version:	6.1.1
+Version:	8.0.0
 Release:	1
 License:	BSD
 Group:		Libraries
 #Source0Download: https://github.com/khaledhosny/ots/releases
-Source0:	https://github.com/khaledhosny/ots/releases/download/v%{version}/ots-%{version}.tar.gz
-# Source0-md5:	8b6653d7fe0a72f67466d23690e33141
+Source0:	https://github.com/khaledhosny/ots/releases/download/v%{version}/ots-%{version}.tar.xz
+# Source0-md5:	6ee945656c3622b207edc676f9bb696c
 Patch0:		ots-system-libs.patch
 URL:		https://github.com/khaledhosny/ots
-BuildRequires:	autoconf >= 2.50
-BuildRequires:	automake >= 1:1.11
 BuildRequires:	freetype-devel >= 2
 BuildRequires:	libstdc++-devel >= 6:4.7
-BuildRequires:	libtool >= 2:2
+BuildRequires:	libbrotli-devel
 BuildRequires:	lz4-devel
+BuildRequires:	meson
+BuildRequires:	ninja >= 1.5
 BuildRequires:	pkgconfig >= 1:0.20
+BuildRequires:	tar >= 1:1.22
 BuildRequires:	woff2-devel
+BuildRequires:	xz
 BuildRequires:	zlib-devel
 %if %{with tests}
 BuildRequires:	gtest-devel
@@ -73,7 +75,7 @@ Statyczna biblioteka OpenType Sanitizer.
 
 %prep
 %setup -q -n ots-%{version}
-%patch0 -p1
+%patch0 -p1 -b .orig
 
 # extend blacklist by PLD supplied fonts known to cause test failures
 cat >>tests/BLACKLIST.txt <<EOF
@@ -84,29 +86,18 @@ DroidNaskh-Bold.ttf
 EOF
 
 %build
-%{__libtoolize}
-%{__aclocal} -I m4
-%{__autoconf}
-%{__autoheader}
-%{__automake}
-%configure \
-%if %{without tests}
-	ax_cv_check_cflags___fsanitize_address=no \
-	ax_cv_check_cflags___fsanitize_undefined=no \
-%endif
-	--disable-silent-rules \
-	%{!?with_static_libs:--disable-static}
-%{__make}
+%meson build
+
+%ninja_build -C build
 
 %if %{with tests}
-%{__make} check || (cat test-suite.log && false)
+ninja -C build -v test
 %endif
 
 %install
 rm -rf $RPM_BUILD_ROOT
 
-%{__make} install \
-	DESTDIR=$RPM_BUILD_ROOT
+%ninja_install -C build
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -116,7 +107,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(644,root,root,755)
-%doc LICENSE README docs/{DesignDoc,HowToFix}.md
+%doc LICENSE README.md docs/{DesignDoc,HowToFix}.md
 %attr(755,root,root) %{_bindir}/ots-idempotent
 %attr(755,root,root) %{_bindir}/ots-perf
 %attr(755,root,root) %{_bindir}/ots-sanitize
@@ -128,7 +119,6 @@ rm -rf $RPM_BUILD_ROOT
 %files devel
 %defattr(644,root,root,755)
 %attr(755,root,root) %{_libdir}/libotsanitizer.so
-%{_libdir}/libotsanitizer.la
 %{_includedir}/ots
 
 %if %{with static_libs}
