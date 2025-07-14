@@ -75,7 +75,7 @@ Statyczna biblioteka OpenType Sanitizer.
 
 %prep
 %setup -q -n ots-%{version}
-%patch0 -p1 -b .orig
+%patch -P0 -p1 -b .orig
 
 # extend blacklist by PLD supplied fonts known to cause test failures
 cat >>tests/BLACKLIST.txt <<EOF
