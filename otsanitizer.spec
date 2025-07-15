@@ -86,9 +86,9 @@ DroidNaskh-Bold.ttf
 EOF
 
 %build
-%meson build
+%meson
 
-%ninja_build -C build
+%meson_build
 
 %if %{with tests}
 ninja -C build -v test
@@ -97,7 +97,7 @@ ninja -C build -v test
 %install
 rm -rf $RPM_BUILD_ROOT
 
-%ninja_install -C build
+%meson_install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
