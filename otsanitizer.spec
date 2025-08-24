@@ -8,17 +8,17 @@
 Summary:	OpenType Sanitizer
 Summary(pl.UTF-8):	OpenType Sanitizer - narzędzie poprawiające fonty OpenType
 Name:		otsanitizer
-Version:	8.0.0
+Version:	9.2.0
 Release:	1
 License:	BSD
 Group:		Libraries
 #Source0Download: https://github.com/khaledhosny/ots/releases
 Source0:	https://github.com/khaledhosny/ots/releases/download/v%{version}/ots-%{version}.tar.xz
-# Source0-md5:	6ee945656c3622b207edc676f9bb696c
+# Source0-md5:	a01326b37cd838b975c613036604a3ee
 Patch0:		ots-system-libs.patch
 URL:		https://github.com/khaledhosny/ots
 BuildRequires:	freetype-devel >= 2
-BuildRequires:	libstdc++-devel >= 6:4.7
+BuildRequires:	libstdc++-devel >= 6:7
 BuildRequires:	libbrotli-devel
 BuildRequires:	lz4-devel
 BuildRequires:	meson
@@ -76,7 +76,7 @@ Statyczna biblioteka OpenType Sanitizer.
 
 %prep
 %setup -q -n ots-%{version}
-%patch -P0 -p1 -b .orig
+%patch -P0 -p1
 
 # extend blacklist by PLD supplied fonts known to cause test failures
 cat >>tests/BLACKLIST.txt <<EOF
@@ -87,12 +87,13 @@ DroidNaskh-Bold.ttf
 EOF
 
 %build
-%meson
+%meson \
+	%{!?with_static_libs:--default-library=shared}
 
 %meson_build
 
 %if %{with tests}
-ninja -C build -v test
+%meson_test -v
 %endif
 
 %install
@@ -115,11 +116,16 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) %{_bindir}/ots-side-by-side
 %attr(755,root,root) %{_bindir}/ots-validator-checker
 %attr(755,root,root) %{_libdir}/libotsanitizer.so.*.*.*
-%attr(755,root,root) %ghost %{_libdir}/libotsanitizer.so.0
+%ghost %{_libdir}/libotsanitizer.so.9
+%{_mandir}/man1/ots-idempotent.1*
+%{_mandir}/man1/ots-perf.1*
+%{_mandir}/man1/ots-sanitize.1*
+%{_mandir}/man1/ots-side-by-side.1*
+%{_mandir}/man1/ots-validator-checker.1*
 
 %files devel
 %defattr(644,root,root,755)
-%attr(755,root,root) %{_libdir}/libotsanitizer.so
+%{_libdir}/libotsanitizer.so
 %{_includedir}/ots
 
 %if %{with static_libs}
