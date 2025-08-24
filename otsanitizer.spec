@@ -24,6 +24,7 @@ BuildRequires:	lz4-devel
 BuildRequires:	meson
 BuildRequires:	ninja >= 1.5
 BuildRequires:	pkgconfig >= 1:0.20
+BuildRequires:	rpmbuild(macros) >= 2.042
 BuildRequires:	tar >= 1:1.22
 BuildRequires:	woff2-devel
 BuildRequires:	xz
